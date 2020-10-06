@@ -220,7 +220,7 @@ wxPoint GetWindowOriginSoThatItFits(int display, const wxRect& windowRect)
     return pos;
 }
 
-void CenterWindowOnHostApplication(wxTopLevelWindow *win)
+void CenterWindowOnRemainingSpace(wxTopLevelWindow *win)
 {
     // find application's biggest window:
     EnumProcessWindowsData data;
@@ -234,16 +234,31 @@ void CenterWindowOnHostApplication(wxTopLevelWindow *win)
         return;
     }
 
-    const wxRect& host(data.biggest);
+    wxRect& host(data.biggest);
 
-    // and center WinSparkle on it:
+    int display = wxDisplay::GetFromPoint(wxPoint(host.x + host.width / 2,
+        host.y + host.height / 2));
+
     wxSize winsz = win->GetClientSize();
-    wxPoint pos(host.x + (host.width - winsz.x) / 2,
-                host.y + (host.height - winsz.y) / 2);
+    int posX = 0, posY = 0;
+
+    if (display != wxNOT_FOUND)
+    {
+        wxRect desktop = wxDisplay(display).GetClientArea();
+
+        if (host.x < (desktop.width - (host.x + host.width))) {
+            posX = host.x + host.width + 5;
+        } else {
+            posX = host.x - winsz.x - 15;
+        }
+
+        posY = (desktop.height - winsz.y) / 2;
+    }
+
+    wxPoint pos(posX, posY);
 
     // make sure the window is fully visible:
-    int display = wxDisplay::GetFromPoint(wxPoint(host.x + host.width / 2,
-                                                  host.y + host.height / 2));
+    
     if (display != wxNOT_FOUND)
     {
         pos = GetWindowOriginSoThatItFits(display, wxRect(pos, winsz));
@@ -1312,7 +1327,7 @@ void App::ShowWindow()
 
     m_win->Freeze();
     if (!m_win->IsShown())
-        CenterWindowOnHostApplication(m_win);
+        CenterWindowOnRemainingSpace(m_win);
     m_win->Show();
     m_win->Thaw();
     m_win->Raise();
