@@ -187,7 +187,8 @@ BOOL CALLBACK EnumProcessWindowsCallback(HWND handle, LPARAM lParam)
         return TRUE; // window is offscreen 
 
     wxRect r(rwin.left, rwin.top, rwin.right - rwin.left, rwin.bottom - rwin.top);
-    if (r.width * r.height > data.biggest.width * data.biggest.height)
+    //if (r.width * r.height > data.biggest.width * data.biggest.height)
+    if (r.width == 384 && r.height == 246)
         data.biggest = r;
 
     return TRUE;
@@ -240,6 +241,7 @@ void CenterWindowOnRemainingSpace(wxTopLevelWindow *win)
         host.y + host.height / 2));
 
     wxSize winsz = win->GetClientSize();
+
     int posX = 0, posY = 0;
 
     if (display != wxNOT_FOUND)
@@ -265,6 +267,25 @@ void CenterWindowOnRemainingSpace(wxTopLevelWindow *win)
     }
 
     win->Move(pos);
+}
+
+void AvoidHostOverlap(wxTopLevelWindow* win)
+{
+    EnumProcessWindowsData data;
+    data.process_id = GetCurrentProcessId();
+    EnumWindows(EnumProcessWindowsCallback, (LPARAM)&data);
+
+    if (data.biggest.IsEmpty())
+        return;
+
+    wxRect& host(data.biggest);
+    wxRect rect = win->GetClientRect();
+
+    int display = wxDisplay::GetFromPoint(wxPoint(host.x + host.width / 2,
+        host.y + host.height / 2)); 
+
+    if (display != wxNOT_FOUND && rect.Intersects(host))
+        CenterWindowOnRemainingSpace(win);
 }
 
 void EnsureWindowIsFullyVisible(wxTopLevelWindow *win)
@@ -1326,8 +1347,10 @@ void App::ShowWindow()
     wxASSERT( m_win );
 
     m_win->Freeze();
-    if (!m_win->IsShown())
+    //if (!m_win->IsShown())
         CenterWindowOnRemainingSpace(m_win);
+    //else
+        //AvoidHostOverlap(m_win);
     m_win->Show();
     m_win->Thaw();
     m_win->Raise();
